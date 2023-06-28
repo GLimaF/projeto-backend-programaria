@@ -1,34 +1,94 @@
-const express = require("express")
-const router = express.Router()
+const express = require("express") //aqui estou iniciando o express
+const router = express.Router() //configuração da primeira parte da rota
+const cors = require('cors') //traz o pacote cors para o projeto para consumir essa api no front-end
+const conectaBancoDeDados = require('./bancoDeDados') //aqui o arquivo banco de dados é ligado ao projeto
 
-const app = express()
-const porta = 3333
+conectaBancoDeDados() //aqui a função que conecta o banco de dados é chamada
 
-const mulheres = [
-    {
-        nome: 'Georgia de Lima',
-        Imagem: 'https://instagram.frec17-1.fna.fbcdn.net/v/t51.2885-15/353798290_295990532774682_4532523426700824974_n.webp?stp=dst-jpg_e35_p720x720&_nc_ht=instagram.frec17-1.fna.fbcdn.net&_nc_cat=106&_nc_ohc=wbX4X_BXi5oAX-kAh5p&edm=ACWDqb8BAAAA&ccb=7-5&ig_cache_key=MzEyNDk5OTE0MTQyNzMxNDMwMg%3D%3D.2-ccb7-5&oh=00_AfDcB-JasIgjtbMq4AWy7lR54ce4l6TLaFwWTXAB23c5pg&oe=648F2911&_nc_sid=640168',
-        minibio: 'Aprendiz de desenvolvimento back-end'
-    },
-    {
-        nome: 'Iana Chan',
-        imagem: 'https://s2.glbimg.com/T6zyjkPbcUUa1hlFB2riwRW48yo=/0x0:607x607/984x0/smart/filters:strip_icc()/i.s3.glbimg.com/v1/AUTH_ba3db981e6d14e54bb84be31c923b00c/internal_photos/bs/2021/d/X/TxAivVQTao3ekIdBzVAg/2021-10-05-programaria-iana-chan.jpg',
-        minibio: 'Fundadora da PrograMaria'
-    }, 
-    {
-        nome: 'Nina da hora',
-        imagem: 'https://ogimg.infoglobo.com.br/in/24599691-04f-26c/FT1086A/89162800_El-Nina-da-Hora.jpg',
-        minibio: 'Hacker antirracista'
+const Mulher = require('./mulherModel')
+const app = express() //inicia o app
+app.use(express.json()) //libera o uso do json
+app.use(cors()) //libera o uso do cors
+
+const porta = 3333 // aqui a porta foi criada
+
+//GET
+async function mostraMulheres(request, response) {
+    try {
+        const mulheresVindasDoBancoDeDados = await Mulher.find()
+
+        response.json(mulheresVindasDoBancoDeDados)
+    }catch(erro){
+        console.log(erro)
     }
-]
-
-function mostraMulheres(request, response) {
-    response.json(mulheres)
 }
 
+//POST
+async function criaMulher(request, response) {
+    const novaMulher = new Mulher({
+        nome: request.body.nome,
+        imagem: request.body.imagem,
+        minibio: request.body.minibio,
+        citacao: request.body.citacao
+    })
+
+    try {
+        const mulherCriada = await novaMulher.save()
+            response.status(201).json(mulherCriada)
+    } catch(erro){
+        console.log(erro)
+    }
+
+}
+
+//Patch
+async function corrigeMulher(request, response) {
+    try {
+        const mulherEncontrada = await Mulher.findById(request.params.id)
+
+        if (request.body.nome) {
+            mulherEncontrada.nome = request.body.nome 
+        }
+
+        if (request.body.imagem) {
+            mulherEncontrada.imagem = request.body.imagem
+        }
+        
+        if (request.body.minibio) {
+            mulherEncontrada.minibio = request.body.minibio
+        }
+
+        if (request.body.citacao) {
+            mulherEncontrada = request.body.citacao
+        }
+
+        const mulherAtualizadaNoBancoDeDados = await mulherEncontrada.save()
+        response.json(mulherAtualizadaNoBancoDeDados)
+
+    } catch(erro) {
+        console.log(erro)
+    }
+}
+
+//Delete
+async function deletaMulher(request, response) {
+    try {
+        await Mulher.findByIdAndDelete(request.params.id)
+        response.json({ messagem: 'Mulher deletada com sucesso!'})
+
+    } catch(erro) {
+        console.log(erro)
+    }
+}
+
+app.use(router.get('/mulheres', mostraMulheres)) //configuração da rota get /mulheres
+app.use(router.post('/mulheres', criaMulher)) //configura a rota POST /mulheres
+app.use(router.patch('/mulheres/:id', corrigeMulher)) //configuração da rota patch /mulheres/:id
+app.use(router.delete('/mulheres/:id', deletaMulher)) //configuração da rota Delete /mulheres/:id
+
+//Porta
 function mostraPorta() {
     console.log("Servidor criado e rodando na porta ", porta)
 }
 
-app.use(router.get('/mulheres', mostraMulheres))
-app.listen(porta, mostraPorta)
+app.listen(porta, mostraPorta) //servidor ouvindo a porta
